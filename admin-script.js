@@ -237,18 +237,26 @@ async function saveRoom(event) {
     }
 }
 
+
+
 function showConfirmModal(title, message, callback) {
-    console.log('showConfirmModal called with:', title, message);
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
 
-    // TEMPORARY: Use native confirm instead of custom modal for debugging
-    const userConfirmed = window.confirm(message);
+    confirmCallback = callback;
 
-    if (userConfirmed && callback) {
-        console.log('User confirmed, executing callback');
-        callback();
-    } else {
-        console.log('User cancelled');
-    }
+    // Setup confirm button
+    const confirmBtn = document.getElementById('confirm-btn');
+    // Remove old listeners to prevent multiple firings
+    const newBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+    newBtn.onclick = () => {
+        if (confirmCallback) confirmCallback();
+        closeConfirmModal();
+    };
+
+    document.getElementById('confirm-modal').style.display = 'flex';
 }
 
 function closeConfirmModal() {
