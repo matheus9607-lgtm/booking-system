@@ -347,6 +347,68 @@ def settings():
         print(f"Error in settings: {e}")
         return jsonify({'error': str(e)}), 500
 
+# Custom Pricing Endpoints
+@app.route('/api/custom-prices', methods=['GET'])
+def get_custom_prices():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM custom_pricing ORDER BY startDate')
+        prices = cursor.fetchall()
+        conn.close()
+        return jsonify([dict(row) for row in prices])
+    except Exception as e:
+        print(f"Error getting custom prices: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/custom-prices', methods=['POST'])
+def add_custom_price():
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if USE_POSTGRES:
+            cursor.execute('''
+                INSERT INTO custom_pricing (roomId, startDate, endDate, priceModifier, description)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (data['roomId'], data['startDate'], data['endDate'], 
+                  data['priceModifier'], data['description']))
+            new_id = cursor.fetchone()[0]
+        else:
+            cursor.execute('''
+                INSERT INTO custom_pricing (roomId, startDate, endDate, priceModifier, description)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (data['roomId'], data['startDate'], data['endDate'], 
+                  data['priceModifier'], data['description']))
+            new_id = cursor.lastrowid
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'id': new_id}), 201
+    except Exception as e:
+        print(f"Error adding custom price: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/custom-prices/<int:price_id>', methods=['DELETE'])
+def delete_custom_price(price_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if USE_POSTGRES:
+            cursor.execute('DELETE FROM custom_pricing WHERE id = %s', (price_id,))
+        else:
+            cursor.execute('DELETE FROM custom_pricing WHERE id = ?', (price_id,))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error deleting custom price: {e}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'development') == 'development'

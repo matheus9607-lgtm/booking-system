@@ -74,6 +74,18 @@ def init_postgresql(database_url):
             )
         ''')
         
+        # Create custom_pricing table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS custom_pricing (
+                id SERIAL PRIMARY KEY,
+                roomId TEXT NOT NULL,
+                startDate TEXT NOT NULL,
+                endDate TEXT NOT NULL,
+                priceModifier REAL NOT NULL,
+                description TEXT
+            )
+        ''')
+        
         # Insert default settings if not exists
         cursor.execute('SELECT COUNT(*) FROM settings')
         if cursor.fetchone()[0] == 0:
@@ -164,6 +176,18 @@ def init_sqlite():
             startTime TEXT DEFAULT '08:00',
             endTime TEXT DEFAULT '22:00',
             workDays TEXT DEFAULT '1,2,3,4,5,6'
+        )
+    ''')
+    
+    # Create custom_pricing table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS custom_pricing (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            roomId TEXT NOT NULL,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            priceModifier REAL NOT NULL,
+            description TEXT
         )
     ''')
     

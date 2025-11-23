@@ -5,6 +5,7 @@ let currentWeekStart = new Date();
 let selectedSlots = [];
 let showMorning = false;
 let apiSettings = null; // Cache settings
+let apiCustomPrices = []; // Cache custom pricing rules
 
 // API Base URL - Production
 const API_URL = 'https://marcos-lima-booking.onrender.com/api';
@@ -38,6 +39,7 @@ async function init() {
     currentWeekStart.setHours(0, 0, 0, 0);
 
     await loadSettings();
+    await loadCustomPrices();
     await renderRoomsGrid();
 }
 
@@ -50,6 +52,17 @@ async function loadSettings() {
         console.error('Error loading settings:', error);
         // Fallback
         apiSettings = { "startTime": "08:00", "endTime": "22:00", "workDays": ["1", "2", "3", "4", "5"] };
+    }
+}
+
+// Load Custom Pricing Rules
+async function loadCustomPrices() {
+    try {
+        const response = await fetch(`${API_URL}/custom-prices`);
+        apiCustomPrices = await response.json();
+    } catch (error) {
+        console.error('Error loading custom prices:', error);
+        apiCustomPrices = [];
     }
 }
 
@@ -500,6 +513,12 @@ function toggleSlot(dateStr, time) {
 function calculateSlotPrice(dateStr, time, basePrice) {
     let slotPrice = basePrice;
 
+    // Check for custom pricing rules first
+    const customPrice = getCustomPriceForDate(dateStr);
+    if (customPrice !== null) {
+        slotPrice = customPrice;
+    }
+
     const [year, month, day] = dateStr.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
@@ -513,6 +532,19 @@ function calculateSlotPrice(dateStr, time, basePrice) {
         slotPrice += 100;
     }
     return slotPrice;
+}
+
+// Helper: Get custom price for a specific date
+function getCustomPriceForDate(dateStr) {
+    for (const rule of apiCustomPrices) {
+        if (dateStr >= rule.startDate && dateStr <= rule.endDate) {
+            // Check if rule applies to current room or all rooms
+            if (rule.roomId === 'ALL' || rule.roomId === String(currentRoom)) {
+                return rule.priceModifier;
+            }
+        }
+    }
+    return null; // No custom price found
 }
 
 // Helper: Calculate Total with Dynamic Pricing and Progressive Discount
