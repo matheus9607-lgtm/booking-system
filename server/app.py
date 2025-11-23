@@ -6,6 +6,10 @@ import json
 from datetime import datetime
 import werkzeug.utils
 
+# Initialize database on startup
+from init_db import init_database
+init_database()
+
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
