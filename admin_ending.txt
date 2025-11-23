@@ -1,0 +1,18 @@
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal" style="display: none;">
+        <div class="modal-content admin-modal confirm-modal-content">
+            <h2 id="confirm-title">Confirmar Ação</h2>
+            <p id="confirm-message">Tem certeza?</p>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeConfirmModal()">Não</button>
+                <button id="confirm-btn" class="btn-primary">Sim</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+
+</html>

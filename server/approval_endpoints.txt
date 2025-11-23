@@ -1,0 +1,17 @@
+# Add this before the "if __name__ == '__main__':" line
+
+@app.route('/api/bookings/<int:booking_id>/approve', methods=['PUT'])
+def approve_booking(booking_id):
+    conn = get_db_connection()
+    conn.execute('UPDATE bookings SET status = ? WHERE id = ?', ('approved', booking_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Booking approved'})
+
+@app.route('/api/bookings/<int:booking_id>/reject', methods=['PUT'])
+def reject_booking(booking_id):
+    conn = get_db_connection()
+    conn.execute('UPDATE bookings SET status = ? WHERE id = ?', ('rejected', booking_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Booking rejected'})

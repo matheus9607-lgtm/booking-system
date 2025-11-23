@@ -1,0 +1,301 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Set92</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <h1>SET92</h1>
+            <h2>Painel Administrativo</h2>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Usuário</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-primary">Entrar</button>
+                <p class="error-message" id="error-message"></p>
+            </form>
+            <p class="login-hint">Usuário padrão: admin / Senha: admin123</p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>SET92</h1>
+                <p>Admin</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" onclick="showSection('rooms')">
+                    <span>📋</span> Gerenciar Salas
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('availability')">
+                    <span>📅</span> Disponibilidade
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('bookings')">
+                    <span>📊</span> Reservas
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('settings')">
+                    <span>⚙️</span> Configurações
+                </a>
+                <a href="#" class="nav-item logout" onclick="handleLogout()">
+                    <span>🚪</span> Sair
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Rooms Management Section -->
+            <section id="rooms-section" class="content-section">
+                <div class="section-header">
+                    <h2>Gerenciar Salas</h2>
+                    <button class="btn-primary" onclick="addNewRoom()">+ Nova Sala</button>
+                </div>
+
+                <div class="rooms-grid" id="rooms-list">
+                    <!-- Rooms will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Availability Section -->
+            <section id="availability-section" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Gerenciar Disponibilidade</h2>
+                </div>
+
+                <div class="availability-controls">
+                    <div class="form-group">
+                        <label>Selecione a Sala:</label>
+                        <select id="room-select" onchange="loadAvailability()">
+                            <!-- Options loaded dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="availability-calendar">
+                    <h3>Marcar Horários como Indisponíveis</h3>
+                    <div class="form-group">
+                        <label>Data:</label>
+                        <input type="date" id="block-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Horário Inicial:</label>
+                        <select id="block-start-time">
+                            <option value="08:00">08:00</option>
+                            <option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option>
+                            <option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option>
+                            <option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option>
+                            <option value="15:00">15:00</option>
+                            <option value="16:00">16:00</option>
+                            <option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option>
+                            <option value="19:00">19:00</option>
+                            <option value="20:00">20:00</option>
+                            <option value="21:00">21:00</option>
+                            <option value="22:00">22:00</option>
+                            <option value="23:00">23:00</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário Final:</label>
+                        <select id="block-end-time">
+                            <option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option>
+                            <option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option>
+                            <option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option>
+                            <option value="15:00">15:00</option>
+                            <option value="16:00">16:00</option>
+                            <option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option>
+                            <option value="19:00">19:00</option>
+                            <option value="20:00">20:00</option>
+                            <option value="21:00">21:00</option>
+                            <option value="22:00">22:00</option>
+                            <option value="23:00">23:00</option>
+                            <option value="00:00">00:00</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="blockTimeSlot()">Bloquear Horário</button>
+                </div>
+
+                <div class="blocked-slots">
+                    <h3>Horários Bloqueados</h3>
+                    <div id="blocked-list">
+                        <!-- Blocked slots will be listed here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bookings Section -->
+            <section id="bookings-section" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Reservas</h2>
+                </div>
+                <div class="bookings-list" id="bookings-list">
+                    <p class="empty-state">Nenhuma reserva registrada ainda.</p>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Configurações Gerais</h2>
+                </div>
+
+                <div class="settings-container"
+                    style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <form onsubmit="saveSettings(event)">
+                        <h3 style="margin-bottom: 1.5rem; color: #333;">Horário de Funcionamento</h3>
+
+                        <div class="form-row" style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="setting-start-time">Horário de Abertura</label>
+                                <select id="setting-start-time" class="form-control">
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="setting-end-time">Horário de Fechamento</label>
+                                <select id="setting-end-time" class="form-control">
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                    <option value="19:00">19:00</option>
+                                    <option value="20:00">20:00</option>
+                                    <option value="21:00">21:00</option>
+                                    <option value="22:00">22:00</option>
+                                    <option value="23:00">23:00</option>
+                                    <option value="00:00">00:00</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 1.5rem; color: #333;">Dias de Funcionamento</h3>
+
+                        <div class="days-grid"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="0"> Domingo
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="1"> Segunda
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="2"> Terça
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="3"> Quarta
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="4"> Quinta
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="5"> Sexta
+                            </label>
+                            <label class="checkbox-card"
+                                style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                                <input type="checkbox" name="work-days" value="6"> Sábado
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="width: 100%;">Salvar Configurações</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit Room Modal -->
+    <div id="edit-room-modal" class="modal" style="display: none;">
+        <div class="modal-content admin-modal">
+            <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            <h2 id="modal-title">Editar Sala</h2>
+
+            <form id="edit-room-form" onsubmit="saveRoom(event)">
+                <input type="hidden" id="room-id">
+
+                <div class="form-group">
+                    <label for="room-name">Nome da Sala</label>
+                    <input type="text" id="room-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="room-price">Preço por Hora (R$)</label>
+                    <input type="number" id="room-price" required min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="room-size">Tamanho (m²)</label>
+                    <input type="number" id="room-size" required min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="room-features">Características (separadas por vírgula)</label>
+                    <input type="text" id="room-features" placeholder="Ex: Luz Natural, Ciclorama, Pé Direito Alto">
+                </div>
+
+                <div class="form-group">
+                    <label for="room-image">Imagem da Sala</label>
+                    <input type="file" id="room-image-file" accept="image/*" style="margin-bottom: 10px;">
+                    <small style="display: block; margin-bottom: 8px; color: #666;">Ou cole a URL de uma imagem:</small>
+                    <input type="url" id="room-image" placeholder="https://..." style="display: block; width: 100%;">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal" style="display: none;">
+        <div class="modal-content admin-modal confirm-modal-content">
+            <h2 id="confirm-title">Confirmar Ação</h2>
+            <p id="confirm-message">Tem certeza?</p>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeConfirmModal()">Não</button>
+                <button id="confirm-btn" class="btn-primary">Sim</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-script.js?v=9"></script>
+</body>
+
+</html>

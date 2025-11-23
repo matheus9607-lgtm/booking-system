@@ -1,0 +1,35 @@
+# Arquivos Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Banco de dados local
+*.db
+*.sqlite
+*.sqlite3
+
+# Ambiente virtual
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (vamos hospedar separadamente em produção)
+server/static/uploads/*
+!server/static/uploads/.gitkeep
+
+# Logs
+*.log
+
+# Config local
+.env
+.env.local
