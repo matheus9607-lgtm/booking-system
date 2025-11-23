@@ -518,7 +518,22 @@ async function loadSettings() {
         document.querySelectorAll('input[name="work-days"]').forEach(cb => cb.checked = false);
 
         // Set checked days
-        const workDays = typeof settings.workDays === 'string' ? JSON.parse(settings.workDays) : (settings.workDays || []);
+        // Set checked days
+        let workDays = [];
+        if (typeof settings.workDays === 'string') {
+            if (settings.workDays.trim().startsWith('[')) {
+                try {
+                    workDays = JSON.parse(settings.workDays);
+                } catch (e) {
+                    console.error('Error parsing workDays JSON:', e);
+                    workDays = [];
+                }
+            } else {
+                workDays = settings.workDays.split(',');
+            }
+        } else if (Array.isArray(settings.workDays)) {
+            workDays = settings.workDays;
+        }
         workDays.forEach(day => {
             const cb = document.querySelector(`input[name="work-days"][value="${day}"]`);
             if (cb) cb.checked = true;
