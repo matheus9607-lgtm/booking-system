@@ -289,7 +289,25 @@ function isPast(dateStr, timeStr) {
 // Render Grid (Table Layout - Times on Rows, Days on Columns)
 async function renderWeekGrid() {
     const settings = apiSettings || { "workDays": ["1", "2", "3", "4", "5"] };
-    const workDays = settings.workDays.map(Number);
+
+    let workDays = [];
+    if (typeof settings.workDays === 'string') {
+        if (settings.workDays.trim().startsWith('[')) {
+            try {
+                workDays = JSON.parse(settings.workDays);
+            } catch (e) {
+                console.error('Error parsing workDays JSON:', e);
+                workDays = [];
+            }
+        } else {
+            workDays = settings.workDays.split(',');
+        }
+    } else if (Array.isArray(settings.workDays)) {
+        workDays = settings.workDays;
+    }
+
+    // Convert to numbers
+    workDays = workDays.map(Number);
 
     const month = currentWeekStart.toLocaleString('pt-BR', { month: 'long' });
     const year = currentWeekStart.getFullYear();
