@@ -466,7 +466,9 @@ function toggleSlot(dateStr, time) {
         selectedSlots.splice(existingIndex, 1);
     } else {
         // Selecting a new slot
-        const HOURS = getHoursToShow();
+        // Selecting a new slot
+        const settings = apiSettings || { "startTime": "08:00", "endTime": "22:00" };
+        const HOURS = generateHours(settings.startTime || '08:00', settings.endTime || '22:00');
 
         if (selectedSlots.length === 0) {
             // First selection
