@@ -17,12 +17,16 @@ const sidebarDate = document.getElementById('sidebar-date');
 const sidebarTime = document.getElementById('sidebar-time');
 const sidebarTotal = document.getElementById('sidebar-total');
 
-// Hours - split into morning and afternoon
-const MORNING_HOURS = ['08:00', '09:00', '10:00', '11:00'];
-const AFTERNOON_HOURS = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+// Helper: Generate hours between start and end
+function generateHours(startStr, endStr) {
+    const hours = [];
+    let [startHour] = startStr.split(':').map(Number);
+    let [endHour] = endStr.split(':').map(Number);
 
-function getHoursToShow() {
-    return showMorning ? [...MORNING_HOURS, ...AFTERNOON_HOURS] : AFTERNOON_HOURS;
+    for (let h = startHour; h < endHour; h++) {
+        hours.push(`${String(h).padStart(2, '0')}:00`);
+    }
+    return hours;
 }
 
 // Initialize
@@ -315,7 +319,13 @@ async function renderWeekGrid() {
     calendarMonthYear.textContent = `Data da reserva: ${capitalizedMonth} ${year}`;
 
     const container = document.querySelector('.week-grid-container');
-    const HOURS = getHoursToShow();
+
+    // Generate hours dynamically
+    const HOURS = generateHours(settings.startTime || '08:00', settings.endTime || '22:00');
+
+    // Hide "Show Morning" button as we now respect admin settings
+    const morningBtn = document.getElementById('morning-btn');
+    if (morningBtn) morningBtn.style.display = 'none';
 
     // Fetch availability data once for the grid
     let blockedMap = {};
