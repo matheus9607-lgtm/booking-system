@@ -1,23 +1,29 @@
 import os
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-import sqlite3
 import json
 from datetime import datetime
 import werkzeug.utils
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Initialize database on startup
+# Initialize database structure on startup
 from init_db import init_database
-init_database()
+try:
+    init_database()
+except Exception as e:
+    print(f"Warning: Database initialization failed: {e}")
 
 app = Flask(__name__, static_folder='static')
 
-# Configure CORS to allow requests from Vercel frontend
+# Configure CORS
 CORS(app, resources={
     r"/api/*": {
         "origins": [
             "https://marcos-lima-booking.vercel.app",
             "http://localhost:8000",
+            "http://127.0.0.1:8000",
             "http://192.168.100.10:8000"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -25,34 +31,31 @@ CORS(app, resources={
     }
 })
 
-
 # Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# Database Configuration
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///booking.db')
+USE_POSTGRES = DATABASE_URL.startswith('postgresql://')
 
 def get_db_connection():
-    conn = sqlite3.connect('booking.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Get database connection based on environment"""
+    if USE_POSTGRES:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        return conn
+    else:
+        conn = sqlite3.connect('booking.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
-def query_db(query, args=(), one=False):
-    conn = get_db_connection()
-    cur = conn.execute(query, args)
-    rv = cur.fetchall()
-    conn.commit()
-    conn.close()
-    return (rv[0] if rv else None) if one else rv
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- Routes ---
+# --- ROUTES ---
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -63,11 +66,9 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     if file and allowed_file(file.filename):
         filename = werkzeug.utils.secure_filename(file.filename)
-        # Add timestamp to prevent duplicates
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
         filename = timestamp + filename
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # Return the URL relative to the server root
         file_url = f'/static/uploads/{filename}'
         return jsonify({'url': file_url}), 200
     return jsonify({'error': 'File type not allowed'}), 400
@@ -75,16 +76,23 @@ def upload_file():
 # 1. Rooms
 @app.route('/api/rooms', methods=['GET'])
 def get_rooms():
-    rooms = query_db('SELECT * FROM rooms')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM rooms')
+    rooms = cursor.fetchall()
+    conn.close()
+    
     rooms_list = []
     for room in rooms:
+        # Handle dict (Postgres) vs Row (SQLite)
+        r = dict(room)
         rooms_list.append({
-            'id': room['id'],
-            'name': room['name'],
-            'price': room['price'],
-            'size': room['size'],
-            'features': room['features'].split(',') if room['features'] else [],
-            'image': room['image']
+            'id': r['id'],
+            'name': r['name'],
+            'price': r['price'],
+            'size': r['size'],
+            'features': r['features'].split(',') if r['features'] else [],
+            'image': r['image']
         })
     return jsonify(rooms_list)
 
@@ -92,25 +100,37 @@ def get_rooms():
 def add_room():
     data = request.json
     features_str = ','.join(data.get('features', []))
-    
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('INSERT INTO rooms (name, price, size, features, image) VALUES (?, ?, ?, ?, ?)',
-                (data['name'], data['price'], data['size'], features_str, data['image']))
-    conn.commit()
-    new_id = cur.lastrowid
-    conn.close()
+    cursor = conn.cursor()
     
+    if USE_POSTGRES:
+        cursor.execute(
+            'INSERT INTO rooms (name, price, size, features, image) VALUES (%s, %s, %s, %s, %s) RETURNING id',
+            (data['name'], data['price'], data['size'], features_str, data['image'])
+        )
+        new_id = cursor.fetchone()['id']
+    else:
+        cursor.execute(
+            'INSERT INTO rooms (name, price, size, features, image) VALUES (?, ?, ?, ?, ?)',
+            (data['name'], data['price'], data['size'], features_str, data['image'])
+        )
+        new_id = cursor.lastrowid
+        
+    conn.commit()
+    conn.close()
     return jsonify({'id': new_id, 'message': 'Room created'}), 201
 
 @app.route('/api/rooms/<int:room_id>', methods=['PUT'])
 def update_room(room_id):
     data = request.json
     features_str = ','.join(data.get('features', []))
-    
     conn = get_db_connection()
-    conn.execute('UPDATE rooms SET name=?, price=?, size=?, features=?, image=? WHERE id=?',
-                 (data['name'], data['price'], data['size'], features_str, data['image'], room_id))
+    cursor = conn.cursor()
+    
+    query = 'UPDATE rooms SET name=%s, price=%s, size=%s, features=%s, image=%s WHERE id=%s' if USE_POSTGRES else \
+            'UPDATE rooms SET name=?, price=?, size=?, features=?, image=? WHERE id=?'
+            
+    cursor.execute(query, (data['name'], data['price'], data['size'], features_str, data['image'], room_id))
     conn.commit()
     conn.close()
     return jsonify({'message': 'Room updated'})
@@ -118,7 +138,9 @@ def update_room(room_id):
 @app.route('/api/rooms/<int:room_id>', methods=['DELETE'])
 def delete_room(room_id):
     conn = get_db_connection()
-    conn.execute('DELETE FROM rooms WHERE id = ?', (room_id,))
+    cursor = conn.cursor()
+    query = 'DELETE FROM rooms WHERE id = %s' if USE_POSTGRES else 'DELETE FROM rooms WHERE id = ?'
+    cursor.execute(query, (room_id,))
     conn.commit()
     conn.close()
     return jsonify({'message': 'Room deleted'})
@@ -126,20 +148,26 @@ def delete_room(room_id):
 # 2. Bookings
 @app.route('/api/bookings', methods=['GET'])
 def get_bookings():
-    bookings = query_db('SELECT * FROM bookings')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM bookings')
+    bookings = cursor.fetchall()
+    conn.close()
+    
     bookings_list = []
     for b in bookings:
+        b = dict(b)
         bookings_list.append({
             'id': b['id'],
-            'room': b['room_name'],
-            'customerName': b['customer_name'],
-            'customerPhone': b['customer_phone'],
+            'room': b['room'] if 'room' in b else b.get('room_name', 'Unknown'), # Handle potential column name diffs
+            'customerName': b['customerName'] if 'customerName' in b else b.get('customer_name', ''),
+            'customerPhone': b['customerPhone'] if 'customerPhone' in b else b.get('customer_phone', ''),
             'date': b['date'],
-            'timeRange': b['time_range'],
+            'timeRange': b['timeRange'] if 'timeRange' in b else b.get('time_range', ''),
             'total': b['total'],
-            'createdAt': b['created_at'],
-            'slots': json.loads(b['slots_json']),
-            'status': b['status'] if 'status' in b.keys() else 'pending'
+            'createdAt': b['createdAt'] if 'createdAt' in b else b.get('created_at', ''),
+            'slots': json.loads(b['slots']) if 'slots' in b else json.loads(b.get('slots_json', '[]')),
+            'status': b.get('status', 'pending')
         })
     return jsonify(bookings_list)
 
@@ -147,23 +175,52 @@ def get_bookings():
 def add_booking():
     data = request.json
     slots_json = json.dumps(data['slots'])
-    
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('''
-        INSERT INTO bookings (room_name, customer_name, customer_phone, date, time_range, total, created_at, slots_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json))
-    conn.commit()
-    new_id = cur.lastrowid
-    conn.close()
+    cursor = conn.cursor()
     
+    if USE_POSTGRES:
+        cursor.execute('''
+            INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+        new_id = cursor.fetchone()['id']
+    else:
+        cursor.execute('''
+            INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+        new_id = cursor.lastrowid
+        
+    conn.commit()
+    conn.close()
     return jsonify({'id': new_id, 'message': 'Booking created'}), 201
+
+@app.route('/api/bookings/<int:booking_id>/approve', methods=['PUT'])
+def approve_booking(booking_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = 'UPDATE bookings SET status = %s WHERE id = %s' if USE_POSTGRES else 'UPDATE bookings SET status = ? WHERE id = ?'
+    cursor.execute(query, ('approved', booking_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Booking approved'})
+
+@app.route('/api/bookings/<int:booking_id>/reject', methods=['PUT'])
+def reject_booking(booking_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = 'UPDATE bookings SET status = %s WHERE id = %s' if USE_POSTGRES else 'UPDATE bookings SET status = ? WHERE id = ?'
+    cursor.execute(query, ('rejected', booking_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Booking rejected'})
 
 @app.route('/api/bookings/<int:booking_id>', methods=['DELETE'])
 def delete_booking(booking_id):
     conn = get_db_connection()
-    conn.execute('DELETE FROM bookings WHERE id = ?', (booking_id,))
+    cursor = conn.cursor()
+    query = 'DELETE FROM bookings WHERE id = %s' if USE_POSTGRES else 'DELETE FROM bookings WHERE id = ?'
+    cursor.execute(query, (booking_id,))
     conn.commit()
     conn.close()
     return jsonify({'message': 'Booking deleted'})
@@ -171,52 +228,66 @@ def delete_booking(booking_id):
 # 3. Blocked Slots
 @app.route('/api/blocked-slots', methods=['GET'])
 def get_blocked_slots():
-    slots = query_db('SELECT * FROM blocked_slots')
-    # Group by room_id to match frontend structure: { roomId: [slots] }
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM blocked_slots')
+    slots = cursor.fetchall()
+    conn.close()
+    
     blocked_map = {}
     for slot in slots:
-        rid = str(slot['room_id'])
+        s = dict(slot)
+        rid = str(s['roomId'] if 'roomId' in s else s.get('room_id'))
         if rid not in blocked_map:
             blocked_map[rid] = []
         blocked_map[rid].append({
-            'id': slot['id'],
-            'date': slot['date'],
-            'startTime': slot['start_time'],
-            'endTime': slot['end_time']
+            'id': s['id'],
+            'date': s['date'],
+            'startTime': s['startTime'] if 'startTime' in s else s.get('start_time'),
+            'endTime': s['endTime'] if 'endTime' in s else s.get('end_time')
         })
     return jsonify(blocked_map)
 
 @app.route('/api/blocked-slots', methods=['POST'])
 def add_blocked_slot():
     data = request.json
-    room_id = data['roomId']
-    
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('INSERT INTO blocked_slots (room_id, date, start_time, end_time) VALUES (?, ?, ?, ?)',
-                (room_id, data['date'], data['startTime'], data['endTime']))
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute(
+            'INSERT INTO blocked_slots (roomId, date, startTime, endTime) VALUES (%s, %s, %s, %s)',
+            (data['roomId'], data['date'], data['startTime'], data['endTime'])
+        )
+    else:
+        cursor.execute(
+            'INSERT INTO blocked_slots (roomId, date, startTime, endTime) VALUES (?, ?, ?, ?)',
+            (data['roomId'], data['date'], data['startTime'], data['endTime'])
+        )
+        
     conn.commit()
     conn.close()
-    
     return jsonify({'message': 'Slot blocked'}), 201
 
 @app.route('/api/blocked-slots/<int:room_id>/<int:slot_index>', methods=['DELETE'])
 def delete_blocked_slot(room_id, slot_index):
-    # This is tricky because frontend sends index, but DB has IDs.
-    # We need to fetch all slots for the room and delete the one at the index.
-    # OR, better: update frontend to use IDs.
-    # For now, let's try to find it by index.
-    
-    # Actually, let's just accept that we might need to change frontend logic to send ID.
-    # But to keep changes minimal, let's fetch all for room, find the one at index, and delete it.
+    # Logic to find slot by index (temporary fix for frontend logic)
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT id FROM blocked_slots WHERE room_id = ?', (room_id,))
-    rows = cur.fetchall()
+    cursor = conn.cursor()
+    
+    query = 'SELECT id FROM blocked_slots WHERE roomId = %s' if USE_POSTGRES else 'SELECT id FROM blocked_slots WHERE roomId = ?'
+    cursor.execute(query, (str(room_id),))
+    rows = cursor.fetchall()
     
     if 0 <= slot_index < len(rows):
-        slot_db_id = rows[slot_index]['id']
-        cur.execute('DELETE FROM blocked_slots WHERE id = ?', (slot_db_id,))
+        slot_db_id = rows[slot_index]['id'] if USE_POSTGRES else rows[slot_index][0] # Postgres dict vs SQLite row/tuple
+        if USE_POSTGRES:
+             slot_db_id = rows[slot_index]['id']
+        else:
+             slot_db_id = rows[slot_index]['id']
+             
+        del_query = 'DELETE FROM blocked_slots WHERE id = %s' if USE_POSTGRES else 'DELETE FROM blocked_slots WHERE id = ?'
+        cursor.execute(del_query, (slot_db_id,))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Slot unblocked'})
@@ -225,68 +296,25 @@ def delete_blocked_slot(room_id, slot_index):
     return jsonify({'error': 'Slot not found'}), 404
 
 # 4. Settings
-@app.route('/api/settings', methods=['GET'])
-def get_settings():
-    rows = query_db('SELECT * FROM settings')
-    settings = {}
-    for row in rows:
-        val = row['value']
-        # Try to parse JSON if it looks like an array/object
-        try:
-            val = json.loads(val)
-        except:
-            pass
-        settings[row['key']] = val
-    return jsonify(settings)
-
-@app.route('/api/settings', methods=['POST'])
-def update_settings():
-    data = request.json
-    conn = get_db_connection()
-    
-    for key, value in data.items():
-        val_str = json.dumps(value) if isinstance(value, (list, dict)) else str(value)
-        # Upsert
-        conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (key, val_str))
-        
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Settings updated'})
-
-# Booking Approval
-@app.route('/api/bookings/<int:booking_id>/approve', methods=['PUT'])
-def approve_booking(booking_id):
-    conn = get_db_connection()
-    conn.execute('UPDATE bookings SET status = ? WHERE id = ?', ('approved', booking_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Booking approved'})
-
-@app.route('/api/bookings/<int:booking_id>/reject', methods=['PUT'])
-def reject_booking(booking_id):
-    conn = get_db_connection()
-    conn.execute('UPDATE bookings SET status = ? WHERE id = ?', ('rejected', booking_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Booking rejected'})
-
-# Settings endpoint
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
         if request.method == 'GET':
-            conn = get_db_connection()
-            settings = conn.execute('SELECT * FROM settings LIMIT 1').fetchone()
+            cursor.execute('SELECT * FROM settings LIMIT 1')
+            settings = cursor.fetchone()
             conn.close()
             
             if settings:
+                s = dict(settings)
                 return jsonify({
-                    'startTime': settings['startTime'],
-                    'endTime': settings['endTime'],
-                    'workDays': settings['workDays']
+                    'startTime': s['startTime'],
+                    'endTime': s['endTime'],
+                    'workDays': s['workDays']
                 })
             else:
-                # Return defaults if no settings found
                 return jsonify({
                     'startTime': '08:00',
                     'endTime': '22:00',
@@ -295,40 +323,31 @@ def settings():
         
         elif request.method == 'POST':
             data = request.json
-            conn = get_db_connection()
-            
-            # Convert workDays array to comma-separated string
             work_days = ','.join(map(str, data.get('workDays', [])))
             
-            # Check if settings exist
-            existing = conn.execute('SELECT COUNT(*) FROM settings').fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM settings')
+            count_result = cursor.fetchone()
+            # Postgres returns dict, SQLite returns Row/tuple
+            count = count_result['count'] if USE_POSTGRES else count_result[0]
             
-            if existing > 0:
-                # Update existing settings
-                conn.execute('''
-                    UPDATE settings 
-                    SET startTime = ?, endTime = ?, workDays = ?
-                    WHERE id = 1
-                ''', (data.get('startTime'), data.get('endTime'), work_days))
+            if count > 0:
+                query = 'UPDATE settings SET startTime=%s, endTime=%s, workDays=%s WHERE id=1' if USE_POSTGRES else \
+                        'UPDATE settings SET startTime=?, endTime=?, workDays=? WHERE id=1'
+                cursor.execute(query, (data.get('startTime'), data.get('endTime'), work_days))
             else:
-                # Insert new settings
-                conn.execute('''
-                    INSERT INTO settings (startTime, endTime, workDays)
-                    VALUES (?, ?, ?)
-                ''', (data.get('startTime'), data.get('endTime'), work_days))
+                query = 'INSERT INTO settings (startTime, endTime, workDays) VALUES (%s, %s, %s)' if USE_POSTGRES else \
+                        'INSERT INTO settings (startTime, endTime, workDays) VALUES (?, ?, ?)'
+                cursor.execute(query, (data.get('startTime'), data.get('endTime'), work_days))
             
             conn.commit()
             conn.close()
             return jsonify({'message': 'Settings updated successfully'})
-    
+            
     except Exception as e:
-        print(f"Error in settings endpoint: {str(e)}")
+        print(f"Error in settings: {e}")
         return jsonify({'error': str(e)}), 500
 
-
 if __name__ == '__main__':
-    # Porta configurável para produção (Render, Railway, etc)
     port = int(os.environ.get('PORT', 5000))
-    # Debug desligado em produção
     debug = os.environ.get('FLASK_ENV', 'development') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
