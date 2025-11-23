@@ -4,8 +4,8 @@ const ADMIN_CREDENTIALS = {
     password: 'admin123'
 };
 
-// API Base URL - Dynamic to work on mobile
-const API_URL = `http://${window.location.hostname}:5000/api`;
+// API Base URL - Production
+const API_URL = 'https://marcos-lima-booking.onrender.com/api';
 
 // Initialize data structure
 let roomsData = [];

@@ -6,8 +6,8 @@ let selectedSlots = [];
 let showMorning = false;
 let apiSettings = null; // Cache settings
 
-// API Base URL - Dynamic to work on mobile
-const API_URL = `http://${window.location.hostname}:5000/api`;
+// API Base URL - Production
+const API_URL = 'https://marcos-lima-booking.onrender.com/api';
 
 // DOM Elements
 const modal = document.getElementById('booking-modal');
