@@ -260,52 +260,57 @@ def reject_booking(booking_id):
 # Settings endpoint
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
-    if request.method == 'GET':
-        conn = get_db_connection()
-        settings = conn.execute('SELECT * FROM settings LIMIT 1').fetchone()
-        conn.close()
+    try:
+        if request.method == 'GET':
+            conn = get_db_connection()
+            settings = conn.execute('SELECT * FROM settings LIMIT 1').fetchone()
+            conn.close()
+            
+            if settings:
+                return jsonify({
+                    'startTime': settings['startTime'],
+                    'endTime': settings['endTime'],
+                    'workDays': settings['workDays']
+                })
+            else:
+                # Return defaults if no settings found
+                return jsonify({
+                    'startTime': '08:00',
+                    'endTime': '22:00',
+                    'workDays': '1,2,3,4,5,6'
+                })
         
-        if settings:
-            return jsonify({
-                'startTime': settings['startTime'],
-                'endTime': settings['endTime'],
-                'workDays': settings['workDays']
-            })
-        else:
-            # Return defaults if no settings found
-            return jsonify({
-                'startTime': '08:00',
-                'endTime': '22:00',
-                'workDays': '1,2,3,4,5,6'
-            })
+        elif request.method == 'POST':
+            data = request.json
+            conn = get_db_connection()
+            
+            # Convert workDays array to comma-separated string
+            work_days = ','.join(map(str, data.get('workDays', [])))
+            
+            # Check if settings exist
+            existing = conn.execute('SELECT COUNT(*) FROM settings').fetchone()[0]
+            
+            if existing > 0:
+                # Update existing settings
+                conn.execute('''
+                    UPDATE settings 
+                    SET startTime = ?, endTime = ?, workDays = ?
+                    WHERE id = 1
+                ''', (data.get('startTime'), data.get('endTime'), work_days))
+            else:
+                # Insert new settings
+                conn.execute('''
+                    INSERT INTO settings (startTime, endTime, workDays)
+                    VALUES (?, ?, ?)
+                ''', (data.get('startTime'), data.get('endTime'), work_days))
+            
+            conn.commit()
+            conn.close()
+            return jsonify({'message': 'Settings updated successfully'})
     
-    elif request.method == 'POST':
-        data = request.json
-        conn = get_db_connection()
-        
-        # Convert workDays array to comma-separated string
-        work_days = ','.join(map(str, data.get('workDays', [])))
-        
-        # Check if settings exist
-        existing = conn.execute('SELECT COUNT(*) FROM settings').fetchone()[0]
-        
-        if existing > 0:
-            # Update existing settings
-            conn.execute('''
-                UPDATE settings 
-                SET startTime = ?, endTime = ?, workDays = ?
-                WHERE id = 1
-            ''', (data.get('startTime'), data.get('endTime'), work_days))
-        else:
-            # Insert new settings
-            conn.execute('''
-                INSERT INTO settings (startTime, endTime, workDays)
-                VALUES (?, ?, ?)
-            ''', (data.get('startTime'), data.get('endTime'), work_days))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({'message': 'Settings updated successfully'})
+    except Exception as e:
+        print(f"Error in settings endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
