@@ -730,7 +730,9 @@ footer {
     .modal-sidebar {
         flex: none;
     }
-}/* Week Grid (Grid Layout - Times on Rows, Days on Columns) */
+}
+
+/* Week Grid (Grid Layout - Times on Rows, Days on Columns) */
 .week-grid-container {
     border: 1px solid var(--color-border);
     border-radius: 4px;
@@ -738,6 +740,136 @@ footer {
     background-color: white;
     max-height: 600px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling on iOS */
+}
+
+/* ... (existing styles) ... */
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    :root {
+        --header-height: 60px;
+        --spacing-lg: 2rem;
+        --spacing-xl: 4rem;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+    }
+
+    h2 {
+        font-size: 2rem;
+    }
+
+    .container {
+        padding: 0 var(--spacing-sm);
+    }
+
+    /* Header */
+    header {
+        padding: 0 var(--spacing-sm);
+    }
+
+    .logo {
+        font-size: 1.1rem;
+    }
+
+    nav ul {
+        gap: var(--spacing-sm);
+    }
+
+    nav a {
+        font-size: 0.8rem;
+    }
+
+    /* Hero */
+    .hero-content {
+        padding: var(--spacing-sm);
+    }
+
+    /* Rooms Grid */
+    .room-grid {
+        grid-template-columns: 1fr;
+        /* Single column on mobile */
+        gap: var(--spacing-md);
+    }
+
+    .room-image {
+        height: 250px;
+    }
+
+    /* Modal */
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        max-width: none;
+    }
+
+    .close-modal {
+        top: 0.5rem;
+        right: 1rem;
+        color: #000;
+        background: rgba(255, 255, 255, 0.8);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-layout {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .modal-main {
+        flex: none;
+        padding: var(--spacing-sm);
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .modal-sidebar {
+        flex: none;
+        min-width: auto;
+        padding: var(--spacing-sm);
+        background-color: var(--color-bg-alt);
+    }
+
+    /* Calendar Controls */
+    .calendar-controls {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .calendar-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #calendar-month-year {
+        font-size: 1.2rem;
+    }
+
+    /* Week Grid on Mobile */
+    .week-grid-container {
+        max-height: 400px;
+    }
+
+    .week-grid-header-cell {
+        min-width: 80px;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .week-grid-time-cell {
+        min-width: 60px;
+        font-size: 0.8rem;
+    }
 }
 
 .week-grid-table {
@@ -818,13 +950,11 @@ footer {
 .week-grid-slot.disabled,
 .week-grid-slot.occupied {
     cursor: not-allowed;
-    background: repeating-linear-gradient(
-        45deg,
-        #f5f5f5,
-        #f5f5f5 10px,
-        #e8e8e8 10px,
-        #e8e8e8 20px
-    );
+    background: repeating-linear-gradient(45deg,
+            #f5f5f5,
+            #f5f5f5 10px,
+            #e8e8e8 10px,
+            #e8e8e8 20px);
     color: #999;
 }
 
@@ -905,7 +1035,7 @@ footer {
 }
 
 /* Calendar header layout improvements */
-.calendar-controls > div:first-child {
+.calendar-controls>div:first-child {
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -1110,13 +1240,11 @@ footer {
 
 .week-grid-slot.closed {
     background-color: #f9fafb;
-    background-image: repeating-linear-gradient(
-        45deg,
-        #f3f4f6,
-        #f3f4f6 10px,
-        #f9fafb 10px,
-        #f9fafb 20px
-    );
+    background-image: repeating-linear-gradient(45deg,
+            #f3f4f6,
+            #f3f4f6 10px,
+            #f9fafb 10px,
+            #f9fafb 20px);
     cursor: not-allowed;
     border-color: #eee;
 }
