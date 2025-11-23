@@ -11,7 +11,20 @@ from init_db import init_database
 init_database()
 
 app = Flask(__name__, static_folder='static')
-CORS(app)
+
+# Configure CORS to allow requests from Vercel frontend
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://marcos-lima-booking.vercel.app",
+            "http://localhost:8000",
+            "http://192.168.100.10:8000"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
+
 
 # Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
