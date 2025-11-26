@@ -638,7 +638,7 @@ async function confirmBooking() {
             showToast('Reserva confirmada com sucesso! Redirecionando para WhatsApp...', 'success');
 
             // WhatsApp Integration - Mobile friendly
-            const phone = '5592993404476';
+            const phone = '559292534514';
             const message = `*Nova Reserva Solicitada* 📸\n\n` +
                 `*Cliente:* ${booking.customerName}\n` +
                 `*Telefone:* ${booking.customerPhone}\n` +
