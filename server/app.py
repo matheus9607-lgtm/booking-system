@@ -57,6 +57,24 @@ def allowed_file(filename):
 
 # --- ROUTES ---
 
+@app.route('/api/debug/db-status', methods=['GET'])
+def debug_db_status():
+    try:
+        conn = get_db_connection()
+        conn.close()
+        return jsonify({
+            'using_postgres': USE_POSTGRES,
+            'database_url_set': bool(os.environ.get('DATABASE_URL')),
+            'database_url_prefix': DATABASE_URL.split('://')[0] if '://' in DATABASE_URL else 'unknown',
+            'status': 'connected'
+        })
+    except Exception as e:
+        return jsonify({
+            'using_postgres': USE_POSTGRES,
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
