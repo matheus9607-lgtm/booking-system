@@ -517,10 +517,8 @@ function rejectBooking(id) {
 // Settings Management
 async function loadSettings() {
     try {
-        console.log('Fetching settings...');
         const response = await fetch(`${API_URL}/settings`);
         const settings = await response.json();
-        console.log('Settings received from API:', settings);
 
         const startEl = document.getElementById('setting-start-time');
         const endEl = document.getElementById('setting-end-time');
@@ -533,7 +531,6 @@ async function loadSettings() {
 
         // Set checked days
         let workDays = [];
-        console.log('Raw workDays:', settings.workDays, 'Type:', typeof settings.workDays);
 
         if (typeof settings.workDays === 'string') {
             // Handle potential JSON string or comma-separated
@@ -553,16 +550,12 @@ async function loadSettings() {
             workDays = settings.workDays;
         }
 
-        console.log('Parsed workDays:', workDays);
-
         workDays.forEach(day => {
             // Ensure day is string for comparison
             const val = String(day).trim();
             const cb = document.querySelector(`input[name="work-days"][value="${val}"]`);
             if (cb) {
                 cb.checked = true;
-            } else {
-                console.warn(`Checkbox for day ${val} not found`);
             }
         });
     } catch (error) {
