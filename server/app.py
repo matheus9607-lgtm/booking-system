@@ -177,13 +177,13 @@ def get_bookings():
         b = dict(b)
         bookings_list.append({
             'id': b['id'],
-            'room': b['room'] if 'room' in b else b.get('room_name', 'Unknown'), # Handle potential column name diffs
-            'customerName': b['customerName'] if 'customerName' in b else b.get('customer_name', ''),
-            'customerPhone': b['customerPhone'] if 'customerPhone' in b else b.get('customer_phone', ''),
+            'room': b.get('room') or b.get('room_name', 'Unknown'),
+            'customerName': b.get('customerName') or b.get('customername') or b.get('customer_name', ''),
+            'customerPhone': b.get('customerPhone') or b.get('customerphone') or b.get('customer_phone', ''),
             'date': b['date'],
-            'timeRange': b['timeRange'] if 'timeRange' in b else b.get('time_range', ''),
+            'timeRange': b.get('timeRange') or b.get('timerange') or b.get('time_range', ''),
             'total': b['total'],
-            'createdAt': b['createdAt'] if 'createdAt' in b else b.get('created_at', ''),
+            'createdAt': b.get('createdAt') or b.get('createdat') or b.get('created_at', ''),
             'slots': json.loads(b['slots']) if 'slots' in b else json.loads(b.get('slots_json', '[]')),
             'status': b.get('status', 'pending')
         })
