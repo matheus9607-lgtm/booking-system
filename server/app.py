@@ -194,6 +194,14 @@ def add_booking():
     try:
         data = request.json
         slots_json = json.dumps(data['slots'])
+        
+        # Clean total string (e.g., "R$ 250,00" -> 250.00)
+        total_str = str(data['total']).replace('R$', '').replace('.', '').replace(',', '.').strip()
+        try:
+            total_val = float(total_str)
+        except ValueError:
+            total_val = 0.0
+            
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -201,13 +209,13 @@ def add_booking():
             cursor.execute('''
                 INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], total_val, data['createdAt'], slots_json, 'pending'))
             new_id = cursor.fetchone()['id']
         else:
             cursor.execute('''
                 INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], total_val, data['createdAt'], slots_json, 'pending'))
             new_id = cursor.lastrowid
             
         conn.commit()
