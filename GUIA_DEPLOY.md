@@ -79,6 +79,20 @@ Preencha os campos:
 Clique em **"Advanced"** → **"Add Environment Variable"**:
 - `FLASK_ENV` = `production`
 
+### Passo 2.5.1: Configurar Banco de Dados (CRÍTICO PARA NÃO PERDER DADOS)
+Para que seus dados não sumam quando o servidor reiniciar, você precisa conectar ao PostgreSQL:
+
+1. No painel do Render, clique em **"New +"** → **"PostgreSQL"**.
+2. Nome: `booking-db` (ou outro).
+3. Plano: **Free**.
+4. Clique em **"Create Database"**.
+5. Copie a **"Internal Database URL"** (começa com `postgresql://...`).
+6. Volte para o seu **Web Service** (o backend que você criou no passo 2.2).
+7. Vá em **"Environment"** → **"Add Environment Variable"**.
+8. Chave: `DATABASE_URL`
+9. Valor: (Cole a URL que você copiou do banco).
+10. Salve as alterações. O Render vai reiniciar o serviço automaticamente.
+
 ### Passo 2.6: Deploy!
 1. Clique em **"Create Web Service"**
 2. Aguarde 5-10 minutos enquanto faz o deploy
