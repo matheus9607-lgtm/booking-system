@@ -191,27 +191,31 @@ def get_bookings():
 
 @app.route('/api/bookings', methods=['POST'])
 def add_booking():
-    data = request.json
-    slots_json = json.dumps(data['slots'])
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    if USE_POSTGRES:
-        cursor.execute('''
-            INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
-        new_id = cursor.fetchone()['id']
-    else:
-        cursor.execute('''
-            INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
-        new_id = cursor.lastrowid
+    try:
+        data = request.json
+        slots_json = json.dumps(data['slots'])
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-    conn.commit()
-    conn.close()
-    return jsonify({'id': new_id, 'message': 'Booking created'}), 201
+        if USE_POSTGRES:
+            cursor.execute('''
+                INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+            new_id = cursor.fetchone()['id']
+        else:
+            cursor.execute('''
+                INSERT INTO bookings (room, customerName, customerPhone, date, timeRange, total, createdAt, slots, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (data['room'], data['customerName'], data['customerPhone'], data['date'], data['timeRange'], data['total'], data['createdAt'], slots_json, 'pending'))
+            new_id = cursor.lastrowid
+            
+        conn.commit()
+        conn.close()
+        return jsonify({'id': new_id, 'message': 'Booking created'}), 201
+    except Exception as e:
+        print(f"Error adding booking: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bookings/<int:booking_id>/approve', methods=['PUT'])
 def approve_booking(booking_id):
