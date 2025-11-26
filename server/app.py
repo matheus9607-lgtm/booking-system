@@ -255,14 +255,14 @@ def get_blocked_slots():
     blocked_map = {}
     for slot in slots:
         s = dict(slot)
-        rid = str(s['roomId'] if 'roomId' in s else s.get('room_id'))
+        rid = str(s.get('roomId') or s.get('roomid') or s.get('room_id'))
         if rid not in blocked_map:
             blocked_map[rid] = []
         blocked_map[rid].append({
             'id': s['id'],
             'date': s['date'],
-            'startTime': s['startTime'] if 'startTime' in s else s.get('start_time'),
-            'endTime': s['endTime'] if 'endTime' in s else s.get('end_time')
+            'startTime': s.get('startTime') or s.get('starttime') or s.get('start_time'),
+            'endTime': s.get('endTime') or s.get('endtime') or s.get('end_time')
         })
     return jsonify(blocked_map)
 
@@ -328,9 +328,9 @@ def settings():
             if settings:
                 s = dict(settings)
                 return jsonify({
-                    'startTime': s['startTime'],
-                    'endTime': s['endTime'],
-                    'workDays': s['workDays']
+                    'startTime': s.get('startTime') or s.get('starttime'),
+                    'endTime': s.get('endTime') or s.get('endtime'),
+                    'workDays': s.get('workDays') or s.get('workdays')
                 })
             else:
                 return jsonify({
