@@ -514,37 +514,56 @@ function rejectBooking(id) {
 }
 
 // Settings Management
+// Settings Management
 async function loadSettings() {
     try {
+        console.log('Fetching settings...');
         const response = await fetch(`${API_URL}/settings`);
         const settings = await response.json();
+        console.log('Settings received from API:', settings);
 
-        document.getElementById('setting-start-time').value = settings.startTime || '08:00';
-        document.getElementById('setting-end-time').value = settings.endTime || '22:00';
+        const startEl = document.getElementById('setting-start-time');
+        const endEl = document.getElementById('setting-end-time');
+
+        if (startEl) startEl.value = settings.startTime || '08:00';
+        if (endEl) endEl.value = settings.endTime || '22:00';
 
         // Reset checkboxes
         document.querySelectorAll('input[name="work-days"]').forEach(cb => cb.checked = false);
 
         // Set checked days
-        // Set checked days
         let workDays = [];
+        console.log('Raw workDays:', settings.workDays, 'Type:', typeof settings.workDays);
+
         if (typeof settings.workDays === 'string') {
-            if (settings.workDays.trim().startsWith('[')) {
+            // Handle potential JSON string or comma-separated
+            const cleanStr = settings.workDays.trim();
+            if (cleanStr.startsWith('[')) {
                 try {
-                    workDays = JSON.parse(settings.workDays);
+                    workDays = JSON.parse(cleanStr);
                 } catch (e) {
                     console.error('Error parsing workDays JSON:', e);
-                    workDays = [];
+                    // Fallback: try removing brackets and splitting
+                    workDays = cleanStr.replace(/[\[\]"]/g, '').split(',');
                 }
             } else {
-                workDays = settings.workDays.split(',');
+                workDays = cleanStr.split(',');
             }
         } else if (Array.isArray(settings.workDays)) {
             workDays = settings.workDays;
         }
+
+        console.log('Parsed workDays:', workDays);
+
         workDays.forEach(day => {
-            const cb = document.querySelector(`input[name="work-days"][value="${day}"]`);
-            if (cb) cb.checked = true;
+            // Ensure day is string for comparison
+            const val = String(day).trim();
+            const cb = document.querySelector(`input[name="work-days"][value="${val}"]`);
+            if (cb) {
+                cb.checked = true;
+            } else {
+                console.warn(`Checkbox for day ${val} not found`);
+            }
         });
     } catch (error) {
         console.error('Error loading settings:', error);
